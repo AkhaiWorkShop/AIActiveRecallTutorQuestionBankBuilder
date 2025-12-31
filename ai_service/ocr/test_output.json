@@ -1,0 +1,49 @@
+[
+  {
+    "question_no": 24,
+    "type": "ESSAY",
+    "question_text": "Contoh kerja sama yang baik adalah.",
+    "choices": {}
+  },
+  {
+    "question_no": 25,
+    "type": "MULTIPLE_CHOICE",
+    "question_text": "Apabila temanmu menyanyikan lagu dari daerahnya,sikapmu adalah.",
+    "choices": {
+      "A": "tidak senang",
+      "B": "tidak mendengar",
+      "C": "senang dan menghormati",
+      "D": "menutup kuping"
+    }
+  },
+  {
+    "question_no": 1,
+    "type": "ESSAY",
+    "question_text": "Sebutkan tiga ciri keberagaman budaya daerah di Indonesia!",
+    "choices": {}
+  },
+  {
+    "question_no": 2,
+    "type": "ESSAY",
+    "question_text": "Di Nanggroe Aceh Darussalam terdapat empat bahasa daerah. Sebutkan!",
+    "choices": {}
+  },
+  {
+    "question_no": 3,
+    "type": "ESSAY",
+    "question_text": "Sebutkan kepanjangan istilah SARA!",
+    "choices": {}
+  },
+  {
+    "question_no": 4,
+    "type": "ESSAY",
+    "question_text": "Sebutkan kalimat sapaan dalam bahasa Gorontalo!",
+    "choices": {}
+  },
+  {
+    "question_no": 5,
+    "type": "ESSAY",
+    "question_text": "Sebutkan kalimat sapaan dalam bahasa Cirebon!",
+    "choices": {}
+  }
+]

@@ -1,0 +1,11 @@
+{"semantic": 0.812, "coverage": 0.25, "missing": ["hati", "ucapan", "perbuatan"], "status": "PARTIAL", "timestamp": "2025-12-17T09:02:36.581517"}
+{"semantic": 0.611, "coverage": 0.0, "missing": ["keyakinan", "hati", "ucapan", "perbuatan"], "status": "FAIL", "timestamp": "2025-12-17T09:03:15.039723"}
+{"semantic": 0.705, "coverage": 0.0, "missing": ["cahaya", "air", "karbon dioksida", "makanan"], "status": "FAIL", "timestamp": "2025-12-17T09:06:05.597025"}
+{"semantic": 0.887, "coverage": 0.0, "missing": ["cahaya", "air", "karbon dioksida", "makanan"], "status": "FAIL", "timestamp": "2025-12-17T09:06:22.930290"}
+{"semantic": 0.905, "coverage": 0.0, "missing": ["cahaya", "air", "karbon dioksida", "makanan"], "status": "FAIL", "timestamp": "2025-12-17T09:06:34.933156"}
+{"semantic": 0.98, "coverage": 0.0, "missing": ["cahaya", "air", "karbon dioksida", "makanan"], "status": "FAIL", "timestamp": "2025-12-17T09:06:41.597889"}
+{"semantic": 1.0, "coverage": 0.0, "missing": ["cahaya", "air", "karbon dioksida", "makanan"], "status": "FAIL", "timestamp": "2025-12-17T09:06:47.864520"}
+{"semantic": 0.905, "coverage": 0.0, "missing": ["cahaya", "air", "karbon dioksida", "makanan"], "status": "FAIL", "timestamp": "2025-12-17T09:08:32.907994"}
+{"semantic": 0.905, "coverage": 1.0, "missing": [], "status": "PASS", "timestamp": "2025-12-17T09:12:32.390497"}
+{"semantic": 0.87, "coverage": 0.75, "missing": ["cahaya"], "status": "PARTIAL", "timestamp": "2025-12-17T09:12:48.985942"}
+{"semantic": 0.905, "coverage": 1.0, "missing": [], "status": "PASS", "timestamp": "2025-12-17T09:32:05.255437"}

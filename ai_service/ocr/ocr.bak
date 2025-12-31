@@ -39,7 +39,7 @@ class OCRExtractor:
             show_log=False,
             det_db_thresh=0.3,
             det_db_box_thresh=0.3,
-            drop_score=0.3
+            drop_score=0.5
         )
 
     def extract_text(self, image_np: np.ndarray) -> tuple[str, float]:
@@ -65,69 +65,25 @@ class OCRExtractor:
         if not blocks:
             return "", 0.0
 
-        # Banded Column Detection to handle mixed layouts (e.g. 2-col vs spanning headers)
-        blocks.sort(key=lambda b: b["y"])
-        avg_h = np.mean([b["h"] for b in blocks])
-        
-        # 1. Group into horizontal bands (rows)
-        bands = []
-        if blocks:
-            current_band = [blocks[0]]
-            for i in range(1, len(blocks)):
-                if blocks[i]["y"] - (current_band[-1]["y"] + current_band[-1]["h"]) < avg_h * 0.8:
-                    current_band.append(blocks[i])
-                else:
-                    bands.append(current_band)
-                    current_band = [blocks[i]]
-            bands.append(current_band)
-
-        # 2. Analyze each band: split vs spanning
+        # Dynamic Column Detection
         xs = [b["x"] for b in blocks]
         min_x, max_x = min(xs), max(b["x"] + b["w"] for b in blocks)
-        mid_p = (min_x + max_x) / 2
+        mid_p = min_x + (max_x - min_x) / 2
+        avg_h = np.mean([b["h"] for b in blocks])
         
-        final_sorted = []
-        col1_buffer = []
-        col2_buffer = []
+        # Group into columns
+        # A block is in col1 if its center is left of mid_p
+        col1 = [b for b in blocks if (b["x"] + b["w"]/2) < mid_p]
+        col2 = [b for b in blocks if (b["x"] + b["w"]/2) >= mid_p]
         
-        def flush_buffers():
-            nonlocal final_sorted, col1_buffer, col2_buffer
-            if col1_buffer:
-                col1_buffer.sort(key=lambda b: (b["y"], b["x"]))
-                final_sorted.extend(col1_buffer)
-                col1_buffer = []
-            if col2_buffer:
-                col2_buffer.sort(key=lambda b: (b["y"], b["x"]))
-                final_sorted.extend(col2_buffer)
-                col2_buffer = []
-
-        for band in bands:
-            # Check if this band is spanning or split
-            is_spanning = False
-            for b in band:
-                # If a block is wide or centered, it's spanning
-                if b["w"] > (max_x - min_x) * 0.7:
-                    is_spanning = True
-                    break
-                if b["x"] < mid_p < (b["x"] + b["w"]):
-                    # Block crosses the middle line
-                    is_spanning = True
-                    break
-            
-            if is_spanning:
-                flush_buffers() # Questions from previous columns must be processed before header
-                band.sort(key=lambda b: b["x"])
-                final_sorted.extend(band)
-            else:
-                # Split into col1 and col2
-                for b in band:
-                    if (b["x"] + b["w"]/2) < mid_p:
-                        col1_buffer.append(b)
-                    else:
-                        col2_buffer.append(b)
-        
-        flush_buffers()
-        sorted_blocks = final_sorted
+        if len(col1) > 4 and len(col2) > 4:
+            # Sort each column: Y (banded) then X
+            col1.sort(key=lambda b: (b["y"] // (avg_h * 0.5), b["x"]))
+            col2.sort(key=lambda b: (b["y"] // (avg_h * 0.5), b["x"]))
+            sorted_blocks = col1 + col2
+            logging.info(f"Two columns detected. Mid={mid_p}")
+        else:
+            sorted_blocks = sorted(blocks, key=lambda b: (b["y"] // (avg_h * 0.5), b["x"]))
 
         texts = [b["text"] for b in sorted_blocks]
         confidences = [b["conf"] for b in sorted_blocks]
@@ -156,9 +112,6 @@ class TextNormalizer:
         # Also split if we see a marker with a space but in a pattern like " a. Solo c. Madura"
         # We look for " [marker] "
         text = re.sub(r'(\s+)([a-dA-D])[\.\s\)]+(\s+)', r'\n\2. \3', text)
-
-        # Split fused question numbers (e.g. "adalah25.")
-        text = re.sub(r'([a-z])(\d+[\.\s]+)', r'\1\n\2', text)
         
         # Collapse multiple spaces but keep newlines
         text = re.sub(r'[ \t]+', ' ', text)
@@ -180,34 +133,17 @@ class QuestionParser:
         for line in lines:
             line = line.strip()
             if not line: continue
-            
-            # 0. Noise / Handwriting Pruning
-            # If line is high-noise density or looks like handwritten scribbles
-            if re.search(r'\d[a-z]\d|[a-z]\d[a-z]', line) and len(line) > 8:
-                continue
-            # Filter non-alphabetic noise strings (e.g. s.is4n, acth3ao)
-            if len(re.findall(r'[^aeiou \d\.\?\!]', line, re.I)) > len(line) * 0.8:
-                continue
-            # If line is at the end and has no vowels, ignore it
-            if not re.search(r'[aeiou]', line, re.I) and len(line) > 5:
-                continue
 
-            # 1. Detect Section Headers (e.g. "B. ", "II. ")
-            # Check for Letter-based headers first to avoid them being seen as options
-            section_match = re.match(r'^([A-Z]|[VXI]+)[\.\s]+([A-Z].*)', line)
-            if section_match:
-                # If it's a long instruction, skip it
-                if len(section_match.group(2)) > 15:
-                    continue
-            
-            # 2. Detect Question Start (Number + Text)
+            # 1. Detect Question Start (Number + Text)
             q_match = re.match(r'^(\d+)[\.\s]+(.*)', line)
             
-            # 3. Detect Implicit Question
+            # 2. Detect Implicit Question (missing number but has markers)
             is_implicit = False
-            if not q_match and re.search(r'\?|adalah|sapaan|Sebutkan|Jelaskan|Gambarkan|Berikan', line, re.IGNORECASE) and len(line) > 10:
+            if not q_match and re.search(r'\?|adalah|sapaan', line, re.IGNORECASE) and len(line) > 10:
+                # If we have options, this is likely a NEW question
                 if curr_q and curr_q["options"]:
                     is_implicit = True
+                # Or if it's the very first block
                 elif not curr_q and not questions:
                     is_implicit = True
 
@@ -218,8 +154,6 @@ class QuestionParser:
                 if q_match:
                     q_num_val = int(q_match.group(1))
                     q_rem = q_match.group(2).strip()
-                    if q_num_val < last_q_num - 10:
-                        logging.info(f"Numbering reset detected: {last_q_num} -> {q_num_val}")
                     last_q_num = q_num_val
                 else:
                     last_q_num += 1
@@ -298,12 +232,12 @@ class QuestionParser:
                 v = re.sub(r'\s+\d+$', '', v)
                 clean_options[k] = re.sub(r'\s+', ' ', v).strip()
             
-            # Allow Essay questions (no options) or MCQ
-            if text or clean_options:
+            if len(clean_options) >= 2:
+                # If question text is empty (OCR failed to get the line), 
+                # use a placeholder or at least show the options
                 final_text = text if text else "[Question text not found]"
                 result.append({
-                    "question_number": q["question_number"],
-                    "question_text": final_text,
+                    "question_text": f"{q['question_number']}. {final_text}",
                     "options": clean_options
                 })
 
@@ -367,8 +301,15 @@ def run_ocr(file: io.BytesIO, lang: str = "id", attempt: int = 1) -> Dict[str, A
     formatted_questions = []
 
     for q in result.get("questions", []):
-        q_no = q.get("question_number")
-        q_text = q.get("question_text", "").strip()
+        raw_qtext = q.get("question_text", "").strip()
+
+        # Extract question number safely (ONLY formatting)
+        q_no = None
+        q_text = raw_qtext
+        m = re.match(r'^(\d+)\.\s*(.*)', raw_qtext)
+        if m:
+            q_no = int(m.group(1))
+            q_text = m.group(2).strip()
 
         raw_options = q.get("options", {})
         choices = {k.upper(): v for k, v in raw_options.items()}

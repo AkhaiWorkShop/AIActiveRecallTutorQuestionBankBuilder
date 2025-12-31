@@ -1,0 +1,23 @@
+# requirements.txt
+
+# --- AI & Machine Learning Libraries ---
+# Tambahkan torch secara eksplisit untuk menghindari konflik di macOS
+torch>=2.1.0
+sentence-transformers
+# Versi PaddleOCR yang stabil dan sudah diuji
+paddlepaddle>=2.6.0
+paddleocr>=2.7.3
+
+# --- Web Framework ---
+fastapi
+uvicorn
+python-multipart
+
+# --- Image & Text Processing ---
+opencv-python
+pillow
+numpy<2
+
+# --- Catatan ---
+# pytesseract tidak digunakan oleh PaddleOCR, bisa dihapus barisnya
+# untuk menjaga lingkungan tetap bersih.

@@ -1,0 +1,18 @@
+# docker-compose.yml
+
+version: '3.8'
+
+services:
+  ai-service:
+    build: .
+    container_name: ai_active_recall_service
+    ports:
+      - "8899:8899"
+    environment:
+      - DISABLE_MODEL_SOURCE_CHECK=True
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+    # Using volumes for development allows hot-reload with --reload flag in CMD
+    # For production, you might want to remove volumes and copy files instead.
+    restart: unless-stopped
